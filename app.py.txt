@@ -1,0 +1,57 @@
+import streamlit as st
+import pandas as pd
+
+st.set_page_config(page_title="Modelo Dupont", layout="wide")
+st.title("Modelo Dupont de Rentabilidad")
+
+# Carga de archivo
+df = None
+uploaded_file = st.file_uploader("Carga tu archivo Excel con los datos de negocio", type=["xlsx"])
+if uploaded_file:
+    df = pd.read_excel(uploaded_file, index_col=0)
+    st.success("Archivo cargado correctamente.")
+    st.write("Vista previa de los datos cargados:")
+    st.dataframe(df)
+
+    # Calculo de indicadores Dupont
+    try:
+        ventas = df.loc['Ventas Netas']
+        utilidad_neta = df.loc['Utilidad Neta']
+        activos_totales = df.loc['Activos Totales']
+        capital_contable = df.loc['Capital Contable']
+
+        # Cálculos
+        margen = (utilidad_neta / ventas) * 100
+        rotacion = ventas / activos_totales
+        apalancamiento = activos_totales / capital_contable
+        roe = margen * rotacion
+        roa = rotacion * apalancamiento
+        pb_capital = 1 / (roe / 100)
+        pb_activos = 1 / (roa / 100)
+
+        # Formateo
+        resultados = pd.DataFrame({
+            "Margen Neto (%)": margen.round(1),
+            "Rotación (veces)": rotacion.round(1),
+            "Apalancamiento (veces)": apalancamiento.round(1),
+            "ROE (%)": roe.round(1),
+            "ROA (%)": roa.round(1),
+            "Pay Back Capital (veces)": pb_capital.round(1),
+            "Pay Back Activos (veces)": pb_activos.round(1),
+        }).T
+
+        st.subheader("Reporte Dupont")
+        st.dataframe(resultados)
+
+        # Exportación
+        st.download_button(
+            label="📥 Descargar en Excel",
+            data=resultados.to_excel(index=True, engine='openpyxl'),
+            file_name="Reporte_Dupont.xlsx",
+            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        )
+
+    except KeyError as e:
+        st.error(f"Columna faltante: {e}. Asegúrate que el archivo tenga los siguientes renglones: 'Ventas Netas', 'Utilidad Neta', 'Activos Totales', 'Capital Contable'.")
+else:
+    st.info("Esperando carga del archivo Excel para procesar el modelo Dupont.")
